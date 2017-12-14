@@ -9,10 +9,12 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler
 from keras import backend as K
 from keras.models import load_model
 
+from . import data, models
+
 log = logging.getLogger(__name__)
 
 
-def train(data_path, name, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
+def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
     """Trains model for bowl/vase segmentation
     
     Will produce .hdf5 model file in current directory for final model.
@@ -26,10 +28,12 @@ def train(data_path, name, batch_size=24, num_epochs=100, num_workers=3, samples
     """
 
     log.info("Create data iterators")
-    train_iter, val_iter = data.make_iterators(data_path)
+    train_iter, val_iter = data.make_iterators(
+        data_path, image_size, batch_size, split_seed=42, test_size=0.25
+    )
 
     log.info("Set up model")
-    model = models.classification_model()
+    model = models.classification_model(image_size)
     log.debug(model.summary())
     weights_fn = "%s.hdf5" % name
 
@@ -55,7 +59,7 @@ def train(data_path, name, batch_size=24, num_epochs=100, num_workers=3, samples
         epochs=num_epochs,
         verbose=1,
         validation_data=val_iter,
-        validation_steps=int(np.floor(validation_iter.num_samples/batch_size)),
+        validation_steps=int(np.floor(val_iter.num_samples/batch_size)),
         callbacks=callbacks,
         initial_epoch=0,
         workers=num_workers,
@@ -78,6 +82,10 @@ if __name__ == '__main__':
         help='name to save the model in (.hdf5 will be appended)',
     )
     parser.add_argument(
+        '-s', '--image_size', type=int, nargs=2, default=(256,256),
+        help='image size used for training (h*w)',
+    )
+    parser.add_argument(
         '-d', '--debug', action='store_true',
         help='enable debug logging',
     )
@@ -95,11 +103,11 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    loglvl = logging.DEBUG if args.verbose else logging.INFO
+    loglvl = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(
         stream=sys.stdout,
         level=loglvl,
         format='[%(asctime)s: %(levelname)s] %(message)s'
     )
 
-    train(args.data_path, args.name, args.batch_size, args.epochs, args.num_workers)
+    train(args.data_path, args.name, args.image_size, args.batch_size, args.epochs, args.num_workers)
