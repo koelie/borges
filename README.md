@@ -64,3 +64,5 @@ I've included an example model called `example_model.json`. For this I crawled 1
 The model is trained on 2454 images of the dataset (resized to 128x128 pixels), and achieves 82% accuracy on the remaining unused 818 images.
 Which I'd say is pretty good given the limited training data, and large variety of the real-world images (I didn't have a chance to check them all, I'm sure there's a significant number of nonsense images in there).
 
+
+# Generator

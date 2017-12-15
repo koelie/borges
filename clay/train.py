@@ -4,17 +4,19 @@ import argparse
 import sys
 import numpy as np
 import json
+import pylab as pl
 
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler
 from keras import backend as K
 from keras.models import load_model
+from keras_adversarial.image_grid_callback import ImageGridCallback
 
 from . import data, models
 
 log = logging.getLogger(__name__)
 
 
-def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
+def train(data_path, class_name, name, image_size, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
     """Trains model for bowl/vase segmentation
     
     Will produce .hdf5 model file in current directory for final model.
@@ -28,53 +30,60 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_worker
     """
 
     log.info("Create data iterators")
-    train_iter, val_iter, class_map = data.make_iterators(
-        data_path, image_size, batch_size, split_seed=42, test_size=0.25
-    )
+    train_iter, field_idx, field_mean, field_std = data.make_iterator(data_path, class_name, image_size, batch_size)
+    num_fields = len(field_idx)
 
     log.info("Set up model")
-    model = models.classification_model(image_size)
-    #model = models.vgg_model(image_size)
-    log.debug(model.summary())
-    weights_fn = "%s.hdf5" % name
+    gan, generator, discriminator = models.make_models(num_fields, image_size)
 
-    log.info("Set up learning rate scheduler and callbacks")
-    def scheduler(epoch):
-        lr = K.get_value(model.optimizer.lr)
-        if epoch%2==0 and epoch > 5:
-            lr *= .97
-        return float(lr)
+
+    log.info("Set up callbacks")
+
+    # create callback to generate images
+    zsamples = np.random.normal(size=(5*5, num_fields))
+    def generator_sampler():
+        xpred = generator.predict(zsamples)
+        return xpred.reshape((5, 5) + xpred.shape[1:])
+    pl.rcParams['savefig.dpi'] = 200
+
     callbacks = [
-        ModelCheckpoint(
-            weights_fn, monitor='val_loss', 
-            save_best_only=True, save_weights_only=True
-        ),
-        LearningRateScheduler(scheduler),
+        ImageGridCallback("gen_%s_epoch-{:03d}.png" % class_name, generator_sampler, cmap=None),
         CSVLogger('%s.log' % name, append=True)
     ]
 
+    # save model description
+    gen_fn = "%s.generator.hdf5" % name
+    disc_fn = "%s.discriminator.hdf5" % name
     with open("%s.json" % name, 'w') as f:
         meta = {
             'image_size': image_size,
-            'weights_fn': weights_fn,
-            'class_map': class_map,
+            'gen_weights': gen_fn,
+            'disc_weights': disc_fn,
+            'num_fields': num_fields,
+            'field_idx': field_idx.tolist(),
+            'field_mean': field_mean.tolist(),
+            'field_std': field_std.tolist(),
         }
         json.dump(meta, f)
 
     log.info("Starting training")
-    history = model.fit_generator(
+    history = gan.fit_generator(
         train_iter,
         steps_per_epoch=int(np.floor(train_iter.num_samples/batch_size)),
         epochs=num_epochs,
         verbose=1,
         callbacks=callbacks,
-        validation_data=val_iter,
-        validation_steps=int(np.floor(val_iter.num_samples/batch_size)),
         initial_epoch=0,
         workers=num_workers,
         use_multiprocessing=True,
     )
+
+    # save model weights
+    generator.save_weights(gen_fn)
+    discriminator.save_weights(disc_fn)
+
     log.info("Training complete")
+
 
 
 if __name__ == '__main__':
@@ -86,12 +95,16 @@ if __name__ == '__main__':
         help='data directory from the assessment, with bowl and vase images',
     )
     parser.add_argument(
+        'class_name', type=str, choices=('vase','bowl'),
+        help='which class to learn to generate'
+    )
+    parser.add_argument(
         'name', type=str,
         help='name to save the model in (will append .json/.hdf5)',
     )
     parser.add_argument(
-        '-s', '--image_size', type=int, nargs=2, default=(128,128),
-        help='image size used for training (h*w)',
+        '-s', '--image_size', type=int, default=128,
+        help='image size used for training/generation',
     )
     parser.add_argument(
         '-d', '--debug', action='store_true',
@@ -118,4 +131,4 @@ if __name__ == '__main__':
         format='[%(asctime)s: %(levelname)s] %(message)s'
     )
 
-    train(args.data_path, args.name, args.image_size, args.batch_size, args.epochs, args.num_workers)
+    train(args.data_path, args.class_name, args.name, args.image_size, args.batch_size, args.epochs, args.num_workers)

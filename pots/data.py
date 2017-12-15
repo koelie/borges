@@ -1,4 +1,4 @@
-"""Prepare receipts and ground truth masks for training"""
+"""Prepare images for training"""
 import os
 import argparse
 import sys
