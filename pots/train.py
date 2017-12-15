@@ -28,12 +28,13 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_worker
     """
 
     log.info("Create data iterators")
-    train_iter, val_iter = data.make_iterators(
+    train_iter, val_iter, class_map = data.make_iterators(
         data_path, image_size, batch_size, split_seed=42, test_size=0.25
     )
 
     log.info("Set up model")
     model = models.classification_model(image_size)
+    #model = models.vgg_model(image_size)
     log.debug(model.summary())
     weights_fn = "%s.hdf5" % name
 
@@ -52,20 +53,27 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_worker
         CSVLogger('training.%s.log' % name, append=True)
     ]
 
+    with open("%s.json" % name, 'w') as f:
+        meta = {
+            'image_size': image_size,
+            'weights_fn': weights_fn,
+            'class_map': class_map,
+        }
+        json.dump(meta, f)
+
     log.info("Starting training")
     history = model.fit_generator(
         train_iter,
         steps_per_epoch=int(np.floor(train_iter.num_samples/batch_size)),
         epochs=num_epochs,
         verbose=1,
+        callbacks=callbacks,
         validation_data=val_iter,
         validation_steps=int(np.floor(val_iter.num_samples/batch_size)),
-        callbacks=callbacks,
         initial_epoch=0,
         workers=num_workers,
-        pickle_safe=True,
+        use_multiprocessing=True,
     )
-    
     log.info("Training complete")
 
 
@@ -79,10 +87,10 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         'name', type=str,
-        help='name to save the model in (.hdf5 will be appended)',
+        help='name to save the model in (will append .json/.hdf5)',
     )
     parser.add_argument(
-        '-s', '--image_size', type=int, nargs=2, default=(256,256),
+        '-s', '--image_size', type=int, nargs=2, default=(128,128),
         help='image size used for training (h*w)',
     )
     parser.add_argument(

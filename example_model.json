@@ -1,0 +1,1 @@
+{"weights_fn": "pots.hdf5", "class_map": {"0": "vase", "1": "bowl"}, "image_size": [128, 128]}
