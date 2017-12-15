@@ -25,14 +25,14 @@ def generator(fields_size, image_size):
         model.add(LeakyReLU(0.2))
         model.add(UpSampling2D(size=(2, 2)))
 
-    model.add(Conv2D(3, (5, 5), padding='same', kernel_regularizer=reg()))
+    model.add(Conv2D(1, (5, 5), padding='same', kernel_regularizer=reg()))
     model.add(Activation('sigmoid'))
     return model
 
 
 def discriminator(image_size):
     model = Sequential()
-    in_size = (image_size, image_size, 3)
+    in_size = (image_size, image_size, 1)
     model.add(Conv2D(32, (5, 5), padding='same', input_shape=in_size, kernel_regularizer=reg(), name="discriminator"))
 
     for i, sz in enumerate((64, 128, 256, 1)):

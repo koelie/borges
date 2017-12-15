@@ -87,12 +87,12 @@ class ImageIterator(Iterator):
 
         # The transformation of images is not under thread lock so it can be done in parallel
         sz = self.image_size
-        imgs = np.zeros((len(index_array), sz, sz, 3), np.float32)
+        imgs = np.zeros((len(index_array), sz, sz, 1), np.float32)
         fields = np.zeros((len(index_array), self.fields.shape[1]), np.float32)
 
         # build batch of image data
         for i, j in enumerate(index_array):
-            imgs[i] = self.prepare_image(self.filenames[j])
+            imgs[i,:,:,0] = self.prepare_image(self.filenames[j])
             fields[i] = self.fields[j]
         inputs = {
             "generator_input": fields,
@@ -102,7 +102,7 @@ class ImageIterator(Iterator):
 
     def prepare_image(self, filename):
         image = cv2.imread(filename, cv2.IMREAD_COLOR).astype(np.float32) / 255.
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         sz = self.image_size
         image = cv2.resize(image, (sz, sz), cv2.INTER_LINEAR)
         return image
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         pl.figure()
         for i in range(8):
             pl.subplot(2, 4, i+1)
-            pl.imshow(imgs[i])
+            pl.imshow(imgs[i][:,:,0], cmap=None)
             pl.axis('off')
         pl.tight_layout()
         pl.show()

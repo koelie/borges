@@ -43,7 +43,7 @@ def train(data_path, class_name, name, image_size, batch_size=24, num_epochs=100
     zsamples = np.random.normal(size=(5*5, num_fields))
     def generator_sampler():
         xpred = generator.predict(zsamples)
-        return xpred.reshape((5, 5) + xpred.shape[1:])
+        return xpred.reshape((5, 5) + xpred.shape[1:-1])
     pl.rcParams['savefig.dpi'] = 200
 
     callbacks = [
