@@ -64,8 +64,8 @@ def make_iterator(data_path, image_size, batch_size, random_fields=False, num_ra
             fields_fns.extend([join(fields_path, fn) for fn in os.listdir(fields_path) if fn.endswith('.fields')])
         fields = np.array([json.load(open(f)) for f in fields_fns])
         
-        # determine which field values actually change
-        varying_cols = np.where([len(np.unique(fields[:,i]))>1 for i in range(fields.shape[1])])[0]
+        # determine which field values actually change continuously (remove fixed and boolean fields)
+        varying_cols = np.where([len(np.unique(fields[:,i]))>2 for i in range(fields.shape[1])])[0]
         varying_fields = fields[:,varying_cols]
         log.info("%d fields, of wich %d varying", fields.shape[1], varying_fields.shape[1])
 
@@ -75,9 +75,6 @@ def make_iterator(data_path, image_size, batch_size, random_fields=False, num_ra
 
         varying_fields -= field_mean
         varying_fields /= field_std
-
-
-
 
     iterator = ImageIterator(image_fns, varying_fields, image_size, crop, im_max, batch_size)
 

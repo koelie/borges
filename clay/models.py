@@ -13,10 +13,10 @@ def generator(fields_size, image_size):
     model = Sequential()
     model.add(Dense(2048, input_dim=fields_size, kernel_regularizer=reg(), name="generator"))
     model.add(BatchNormalization())
-    sz = int(image_size / 2**5)
+    sz = int(image_size / 2**4)
     model.add(Reshape((sz, sz, -1)))
 
-    for i, sz in enumerate((512, 256, 128, 64, 32)):
+    for i, sz in enumerate((256, 128, 64, 32)):
         model.add(Conv2D(sz, (5, 5), padding='same', kernel_regularizer=reg()))
         model.add(BatchNormalization())
         model.add(LeakyReLU(0.2))
@@ -31,7 +31,8 @@ def discriminator(image_size):
     reg = lambda: L1L2(l1=1e-7, l2=1e-7)
     model = Sequential()
     in_size = (image_size, image_size, 3)
-    model.add(Conv2D(32, (5, 5), padding='same', input_shape=in_size, kernel_regularizer=reg(), name="discriminator"))
+    model.add(GaussianNoise(0.1, input_shape=in_size, name="discriminator"))
+    model.add(Conv2D(32, (5, 5), padding='same', kernel_regularizer=reg()))
     model.add(BatchNormalization())
     
     for i, sz in enumerate((64, 128, 256, 1)):
