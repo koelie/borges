@@ -1,13 +1,13 @@
 """Prepare images for training"""
-import os
 import argparse
 import sys
 import logging
+import os
+from os.path import join, isdir
 
 import cv2
 import numpy as np
 import pylab as pl
-from os.path import join, isdir
 from keras.preprocessing.image import Iterator
 from sklearn.model_selection import train_test_split
 from scipy.stats import truncnorm
@@ -15,81 +15,138 @@ from scipy.stats import truncnorm
 log = logging.getLogger(__name__)
 
 
-
-def make_iterators(data_path, image_size, batch_size, split_seed=42, test_size=0.25, transform=True):
+def make_iterators(data_path, image_size, batch_size,
+                   test_size=0.25, transform=True):
     """Create training and validation image iterators
-    
-    Collects all samples, splits them into training and validation sets, and creates an iterator for each.
-    
+
+    Collects all samples, splits them into training and validation sets,
+    and creates an iterator for each.
+
     Assumes file structure under data_path as follows:
-    
+
     data_path/<classname>/png/<samplename>.png
 
     where classname and samplename can be anything.
     This trains a binary classifier, so currently only supports two classes.
-    
+
+    Parameters
+    ----------
+    data_path : str
+        path to dataset (structured as assessment dataset)
+    image_size : tuple
+        image size to resize to for training
+    batch_size : int
+        number of images in each training batch
+    test_size : float
+        proportion of the data to set aside for testing
+    transform : bool
+        whether to randomly scale and rotate the images
+
+    Returns
+    -------
+    train_iter : ImageIterator
+        trainingset iterator
+    val_iter : ImageIterator
+        validationset iterator
+    class_map : dict
+        maps 0/1 model outputs to class names
     """
     # find the class names
-    classes = [fn for fn in os.listdir(data_path) if isdir(join(data_path, fn))]
-    assert len(classes) == 2, "Only supports binary classification, found %d classes" % len(classes)
-    
+    clses = [fn for fn in os.listdir(data_path) if isdir(join(data_path, fn))]
+    assert len(clses) == 2, "Only supports 2 classes, got %d" % len(clses)
+
     # find all the files
     filenames = []
     labels = []
-    for i, class_name in enumerate(classes):
+    for i, class_name in enumerate(clses):
         img_path = join(data_path, class_name, 'png')
-        fns = [join(img_path, fn) for fn in os.listdir(img_path) if fn.endswith('.png') or fn.endswith('.jpg')]
+        fns = [join(img_path, fn) for fn in os.listdir(img_path)
+               if fn.endswith('.png') or fn.endswith('.jpg')]
         filenames.extend(fns)
         labels.extend([i]*len(fns))
-    
-    train_fns, val_fns, train_labels, val_labels =  train_test_split(
-        filenames, labels, test_size=test_size, 
-        stratify=labels, random_state=split_seed
+
+    # split data and make iterators
+    train_fns, val_fns, train_labels, val_labels = train_test_split(
+        filenames, labels, test_size=test_size, stratify=labels,
+    )
+    train_iter = ImageIterator(
+        train_fns, train_labels, image_size, batch_size, transform=transform
+    )
+    val_iter = ImageIterator(
+        val_fns, val_labels, image_size, batch_size, transform=transform
     )
 
-    train_iter = ImageIterator(train_fns, train_labels, image_size, batch_size, transform=transform)
-    val_iter = ImageIterator(val_fns, val_labels, image_size, batch_size, transform=transform)
-
-    class_map = {i:name for i,name in enumerate(classes)}
+    # store the class names for during prediction
+    class_map = {i: name for i, name in enumerate(clses)}
     return train_iter, val_iter, class_map
 
 
 def sample_trunc_normal(mean, std, minimum, maximum):
+    """Generates truncated normal samples
+
+    Parameters
+    ----------
+    mean : float
+        mean of the normal distribution
+    std : float
+        standard deviation of the normal distribution
+    minimum : float
+        truncate below this value
+    maximum : float
+        truncate above this value
+
+    Returns
+    -------
+    value : float
+        sample from specified distribution
+    """
     x = (minimum - mean) / (std + 1e-10)
     y = (maximum - mean) / (std + 1e-10)
     return truncnorm.rvs(x, y, loc=mean, scale=std)
 
 
 class ImageIterator(Iterator):
-    def __init__(self, filenames, labels, image_size=(256, 256), 
+    """Iterator that generates batches of images and labels for training"""
+
+    def __init__(self, filenames, labels, image_size=(256, 256),
                  batch_size=32, shuffle=True, seed=None, transform=True):
-        """Initialize receipt iterator
-        
+        """Initialize image iterator
+
         Parameters
         ----------
-        directory : str
-            path to original images (should end in .orig.png, and
-            ground truth labelling should be in corresponding .true_bg.png)
+        filenames : list
+            paths to image filenames
+        labels : list
+            list of class labels for each image
         image_size : tuple
-            resize image to this size (width, height)
+            resize images to this size (width, height)
         batch_size : int
             number of images to return per iteration
         shuffle : bool
             whether to shuffle images
         seed : int
             random seed to use
+        transform : bool
+            whether to apply random rotation and scaling to each image
         """
         self.filenames = filenames
         self.labels = labels
         self.image_size = tuple(image_size)
         self.num_samples = len(self.filenames)
         self.transform = transform
-        log.info('Found %d images.' % self.num_samples)
-        super(ImageIterator, self).__init__(self.num_samples, batch_size, shuffle, seed)
+        log.info('Found %d images.', self.num_samples)
+        super(ImageIterator, self).__init__(
+            self.num_samples, batch_size, shuffle, seed
+        )
 
     def _get_batches_of_transformed_samples(self, index_array):
         """Load next batch of images
-        
+
+        Parameters
+        ----------
+        index_array : list
+            dataset indices to include in batch
+
         Returns
         -------
         imgs : ndarray
@@ -97,29 +154,47 @@ class ImageIterator(Iterator):
         labels : ndarray
             ground truth for current batch in single array
         """
-
-        # The transformation of images is not under thread lock so it can be done in parallel
-        imgs = np.zeros((len(index_array),) + self.image_size + (3,), np.float32)
+        # prepare arrays to hold batch data
+        imgs = np.zeros(
+            (len(index_array),) + self.image_size + (3,), np.float32
+        )
         labels = np.zeros((len(index_array), 1), np.float32)
 
-        # build batch of image data
+        # build batch of image/label data
         for i, j in enumerate(index_array):
             imgs[i] = self.prepare_image(self.filenames[j])
             labels[i] = self.labels[j]
         return imgs, labels
 
     def prepare_image(self, filename):
-        image = cv2.imread(filename, cv2.IMREAD_COLOR).astype(np.float32) / 255.
+        """Prepare image for training
+
+        Resize image and randomly scale and rotate
+
+        Parameters
+        ----------
+        filename : str
+            image to prepare
+
+        Returns
+        -------
+        image : nparray
+            prepared image
+        """
+        image = cv2.imread(filename, cv2.IMREAD_COLOR)
+        image = image.astype(np.float32) / 255.
 
         w, h = self.image_size
         scale = h / np.min(image.shape[:2])
 
         if self.transform:
+            # sample transform parameters
             angle = sample_trunc_normal(0, 15, -45, 45)
             scale *= sample_trunc_normal(1, 0.1, .8, 1.2)
             x = sample_trunc_normal(0.5, 0.15, 0.3, 0.7)
             y = sample_trunc_normal(0.5, 0.15, 0.3, 0.7)
         else:
+            # default no-op params
             angle = 0
             y = .5
             x = .5
@@ -130,14 +205,17 @@ class ImageIterator(Iterator):
             "Sampled vars: angle %2.2f, scale %2.2f, center %2.3f, %2.3f",
             angle, scale, x, y
         )
-        
+
         # determine rotation matrices
         rot = cv2.getRotationMatrix2D((x, y), angle, scale)
         # apply shift to rotation center
         rot[0, 2] += (w/2)*scale - x
         rot[1, 2] += (h/2)*scale - y
         # warp image
-        image = cv2.warpAffine(image, rot, self.image_size, None, cv2.INTER_AREA, cv2.BORDER_REFLECT)
+        image = cv2.warpAffine(
+            image, rot, self.image_size, None,
+            cv2.INTER_LINEAR, cv2.BORDER_REFLECT
+        )
         return image
 
     def next(self):
@@ -145,9 +223,8 @@ class ImageIterator(Iterator):
         """
         with self.lock:
             index_array = next(self.index_generator)
-        # The transformation of images is not under thread lock
-        # so it can be done in parallel
         return self._get_batches_of_transformed_samples(index_array)
+
 
 if __name__ == '__main__':
     # pylint: disable=invalid-name
@@ -158,7 +235,7 @@ if __name__ == '__main__':
         help='enable debug logging',
     )
     parser.add_argument(
-        '-s', '--image_size', type=int, nargs=2, default=(256,256),
+        '-s', '--image_size', type=int, nargs=2, default=(256, 256),
         help='training image size (w*h)',
     )
     parser.add_argument(
@@ -178,9 +255,12 @@ if __name__ == '__main__':
         format='[%(asctime)s: %(levelname)s] %(message)s'
     )
 
+    # display some data samples
     log.info("Make iterators")
-    train_iter, _, class_map = make_iterators(args.data_path, args.image_size, 8, split_seed=42, test_size=2, transform=args.transform)
-
+    train_iter, _, class_map = make_iterators(
+        args.data_path, args.image_size, 8,
+        test_size=2, transform=args.transform
+    )
     for imgs, labels in train_iter:
         pl.figure()
         for i in range(8):
@@ -191,4 +271,3 @@ if __name__ == '__main__':
         pl.tight_layout()
         pl.show()
         pl.close('all')
-

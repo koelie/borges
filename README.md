@@ -65,4 +65,54 @@ The model is trained on 2454 images of the dataset (resized to 128x128 pixels), 
 Which I'd say is pretty good given the limited training data, and large variety of the real-world images (I didn't have a chance to check them all, I'm sure there's a significant number of nonsense images in there).
 
 
-# Generator
+# Clay
+
+The clay package trains a GAN model to generate new vases/bowls, based on the expression inputs.
+
+## training
+To train a classifier run the following:
+```
+python -m clay.train <datadir> <name> 
+```
+
+where `datadir` is the path to the assignment datadir (with bowl/vase subdirs) and `name` is any name you want for the trained classifier. This will save a file called `name.json` with the model description, `name.hdf5` with the network weights, and  `name.log` with the training log (accuracy in each epoch). It will also save the generator and discriminator model separately as `name.generator.hdf5` and `name.discriminator.hdf5`.
+
+The training function has some more options, see them with:
+```
+python -m pots.train -h
+```
+
+## predicting
+
+To generate new random bowl/vases with your trained model, run the following:
+```
+python -m clay.generate -n <num> <model.json> <out_path>
+```
+This will generate `num` samples and save them in `out_path`.
+
+To generate a random bowl/vase based on a particular expression, run the following:
+```
+python -m clay.generate  -f <field_file> <model.json> <out_path>
+```
+This will use an existing `.fields` value as input to generate a vase/bowl. Don't expect it too look too much like the original though!
+
+To interpolate between two existing expressions, run the following:
+```
+python -m clay.generate  -f <field_file> -t <field_file> -n <num> <model.json> <out_path>
+```
+This will interpolate between the two `.fields` files in `num` steps, and use the interpolated expressions as input to the model.
+
+## retrieving more data from the api
+
+There's also a little script to request more vase or bowl images from the borges API.
+You can run it with:
+
+```
+python -m clay.get_more_data <datadir> <class> <num>
+```
+where `class` can be vase or bowl. This will interpolate `num` new bowls or vases.
+It generates a new one by taking two random existing expressions and averaging the x/y values of the curve controls. 
+For the required boolean values it randomly picks from one of the existing expressions.
+Then a new `.bom` file and a `.fields` file is created, and a `.png` requested from the borges API.
+
+
