@@ -1,0 +1,127 @@
+{
+"globalID":"0a61fcb4-15cd-4888-a200-d9aafc46f749",
+  "geometry": {
+    "class": "Geometry.Generator.GuidedExtrude",
+    "inputs": {
+      "capType": {
+        "constraints": {
+          "values": [
+            {
+              "title": "Round Cap",
+              "value": 0
+            },
+            {
+              "title": "Square Cap",
+              "value": 1
+            },
+            {
+              "title": "Flat Cap",
+              "value": 2
+            }
+          ]
+        },
+        "id": "capType",
+        "isPublic": false,
+        "type": "Parameter",
+        "value": 2,
+        "valueType": "Enum"
+      },
+      "guideCurveGroup": {
+        "curves": [
+          {
+            "class": "Geometry.Curve.Generator.EditableCurve",
+            "inputs": {
+              "editableCurve": {
+                "id": "spintop guide",
+                "isPublic": true,
+                "type": "Parameter",
+                "value": {
+                  "closed": false,
+                  "controls":[
+                  ],
+                  "type": "EditableCurve"
+                },
+                "valueType": "EditableCurve"
+              }
+            },
+            "type": "Operator"
+          }
+        ],
+        "type": "CurveGroup"
+      },
+      "innerThickness": {
+        "constraints": {
+          "max": 10,
+          "min": 0,
+          "step": 0.01
+        },
+        "id": "innerThickness",
+        "isPublic": false,
+        "type": "Parameter",
+        "value": 6,
+        "valueType": "Float"
+      },
+      "joinType": {
+        "constraints": {
+          "values": [
+            {
+              "title": "Round Join",
+              "value": 0
+            },
+            {
+              "title": "Miter Join",
+              "value": 1
+            },
+            {
+              "title": "Bevel Join",
+              "value": 2
+            }
+          ]
+        },
+        "id": "joinType",
+        "isPublic": false,
+        "type": "Parameter",
+        "value": 2,
+        "valueType": "Enum"
+      },
+      "outerThickness": {
+        "constraints": {
+          "max": 10,
+          "min": 0,
+          "step": 0.01
+        },
+        "id": "outerThickness",
+        "isPublic": false,
+        "type": "Parameter",
+        "value": 0,
+        "valueType": "Float"
+      },
+      "profileCurveGroup": {
+        "curves": [
+          {
+            "class": "Geometry.Curve.Generator.EditableCurve",
+            "inputs": {
+              "editableCurve": {
+                "id": "profile1",
+                "isPublic": true,
+                "type": "Parameter",
+                "value": {
+                  "closed": true,
+                  "controls":[
+                  ],
+                  "type": "EditableCurve"
+                },
+                "valueType": "EditableCurve"
+              }
+            },
+            "type": "Operator"
+          }
+        ],
+        "type": "CurveGroup"
+      }
+    },
+    "type": "Operator"
+  },
+  "type": "Primitive"
+}
+

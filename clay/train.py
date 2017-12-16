@@ -4,6 +4,8 @@ import argparse
 import sys
 import numpy as np
 import json
+import matplotlib
+matplotlib.use('Agg')
 import pylab as pl
 
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler
@@ -16,7 +18,7 @@ from . import data, models
 log = logging.getLogger(__name__)
 
 
-def train(data_path, class_name, name, image_size, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
+def train(data_path, name, image_size, batch_size=24, num_epochs=100, num_workers=3, samples_per_epoch=1000):
     """Trains model for bowl/vase segmentation
     
     Will produce .hdf5 model file in current directory for final model.
@@ -30,7 +32,7 @@ def train(data_path, class_name, name, image_size, batch_size=24, num_epochs=100
     """
 
     log.info("Create data iterators")
-    train_iter, field_idx, field_mean, field_std = data.make_iterator(data_path, class_name, image_size, batch_size)
+    train_iter, field_idx, field_mean, field_std, fields = data.make_iterator(data_path, image_size, batch_size)
     num_fields = len(field_idx)
 
     log.info("Set up model")
@@ -40,14 +42,15 @@ def train(data_path, class_name, name, image_size, batch_size=24, num_epochs=100
     log.info("Set up callbacks")
 
     # create callback to generate images
-    zsamples = np.random.normal(size=(5*5, num_fields))
+    zsamples = np.random.normal(size=(7*7, num_fields))
+    zsamples[:7] = [x*fields[0] + (1-x)*fields[-1] for x in np.linspace(0, 1, 7)]
     def generator_sampler():
         xpred = generator.predict(zsamples)
-        return xpred.reshape((5, 5) + xpred.shape[1:-1])
-    pl.rcParams['savefig.dpi'] = 200
+        return (xpred.reshape((7, 7) + xpred.shape[1:])+1)/2
+    pl.rcParams['savefig.dpi'] = 300
 
     callbacks = [
-        ImageGridCallback("gen_%s_epoch-{:03d}.png" % class_name, generator_sampler, cmap=None),
+        ImageGridCallback("generator_%s_epoch-{:03d}.png" % name, generator_sampler, cmap=None),
         CSVLogger('%s.log' % name, append=True)
     ]
 
@@ -95,10 +98,6 @@ if __name__ == '__main__':
         help='data directory from the assessment, with bowl and vase images',
     )
     parser.add_argument(
-        'class_name', type=str, choices=('vase','bowl'),
-        help='which class to learn to generate'
-    )
-    parser.add_argument(
         'name', type=str,
         help='name to save the model in (will append .json/.hdf5)',
     )
@@ -131,4 +130,4 @@ if __name__ == '__main__':
         format='[%(asctime)s: %(levelname)s] %(message)s'
     )
 
-    train(args.data_path, args.class_name, args.name, args.image_size, args.batch_size, args.epochs, args.num_workers)
+    train(args.data_path, args.name, args.image_size, args.batch_size, args.epochs, args.num_workers)

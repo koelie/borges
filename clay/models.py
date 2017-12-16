@@ -8,47 +8,46 @@ from keras_adversarial import AdversarialModel, simple_gan, gan_targets
 from keras_adversarial import AdversarialOptimizerSimultaneous, normal_latent_sampling
 
 
-def reg():
-    return L1L2(l1=1e-7, l2=1e-7)
-
-
 def generator(fields_size, image_size):
+    reg = lambda: L1L2(l1=1e-7, l2=1e-7)
     model = Sequential()
-    model.add(Dense(4096, input_dim=fields_size, kernel_regularizer=reg(), name="generator"))
+    model.add(Dense(2048, input_dim=fields_size, kernel_regularizer=reg(), name="generator"))
     model.add(BatchNormalization())
-    sz = int(image_size / 2**4)
-    model.add(Reshape((sz, sz, 256)))
+    sz = int(image_size / 2**5)
+    model.add(Reshape((sz, sz, -1)))
 
-    for i, sz in enumerate((128, 128, 64, 32)):
+    for i, sz in enumerate((512, 256, 128, 64, 32)):
         model.add(Conv2D(sz, (5, 5), padding='same', kernel_regularizer=reg()))
-        model.add(BatchNormalization(axis=1))
+        model.add(BatchNormalization())
         model.add(LeakyReLU(0.2))
         model.add(UpSampling2D(size=(2, 2)))
 
-    model.add(Conv2D(1, (5, 5), padding='same', kernel_regularizer=reg()))
-    model.add(Activation('sigmoid'))
+    model.add(Conv2D(3, (5, 5), padding='same', kernel_regularizer=reg()))
+    model.add(Activation('tanh'))
     return model
 
 
 def discriminator(image_size):
+    reg = lambda: L1L2(l1=1e-7, l2=1e-7)
     model = Sequential()
-    in_size = (image_size, image_size, 1)
+    in_size = (image_size, image_size, 3)
     model.add(Conv2D(32, (5, 5), padding='same', input_shape=in_size, kernel_regularizer=reg(), name="discriminator"))
-
+    model.add(BatchNormalization())
+    
     for i, sz in enumerate((64, 128, 256, 1)):
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(LeakyReLU(0.2))
         model.add(Conv2D(sz, (5, 5), padding='same', kernel_regularizer=reg()))
+        model.add(BatchNormalization())
 
-    model.add(AveragePooling2D(pool_size=(4, 4), padding='valid'))
     model.add(Flatten())
+    model.add(Dense(1))
     model.add(Activation('sigmoid'))
     return model
 
 
 def make_models(fields_size, image_size):
-    depth = 4
-    assert image_size%(2**depth) == 0, "image size must be divisible by %d" % 2**depth
+    assert image_size%(2**4) == 0, "image size must be divisible by %d" % 2**4
 
     gen = generator(fields_size, image_size)
     gen.summary()
@@ -65,8 +64,8 @@ def make_models(fields_size, image_size):
     )
     model.adversarial_compile(
         adversarial_optimizer=AdversarialOptimizerSimultaneous(),
-        player_optimizers=[Adam(1e-4, decay=1e-5), Adam(1e-3, decay=1e-5)],
-        loss='binary_crossentropy'
+        player_optimizers=[Adam(lr=1e-4, beta_1=0.2, decay=1e-6), Adam(lr=1e-4, beta_1=0.2, decay=1e-5)],
+        loss='squared_hinge'
     )
     
     return model, gen, disc
