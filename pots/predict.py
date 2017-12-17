@@ -1,4 +1,4 @@
-"""Segment images with trained model and CRF post-processing"""
+"""Classify images as vases or bowls"""
 import logging
 import argparse
 import sys

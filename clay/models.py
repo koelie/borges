@@ -2,8 +2,8 @@
 from keras.models import Sequential
 from keras.layers import (
     Conv2D, BatchNormalization, Activation, LeakyReLU,
-    MaxPooling2D, Reshape, Dense, UpSampling2D,
-    GaussianNoise, Flatten
+    AveragePooling2D, Reshape, Dense,
+    GaussianNoise, Flatten, Conv2DTranspose,
 )
 from keras.optimizers import Adam
 from keras.regularizers import L1L2
@@ -29,22 +29,22 @@ def generator(fields_size, image_size):
         generator model
     """
     reg = lambda: L1L2(l1=1e-7, l2=1e-7)
+    size = int(image_size / 2**4)
     model = Sequential()
-    model.add(Dense(1024, input_dim=fields_size,
+    model.add(Dense(512*size**2, input_dim=fields_size,
                     kernel_regularizer=reg(), name="generator"))
     model.add(BatchNormalization())
-    size = int(image_size / 2**5)
     model.add(Reshape((size, size, -1)))
 
-    for filt in (512, 256, 128, 64, 32):
-        model.add(Conv2D(filt, (5, 5), padding='same',
-                         kernel_regularizer=reg()))
+    for filt in (512, 256, 128):
+        model.add(Conv2DTranspose(filt, (5, 5), strides=2, padding='same',
+                                  kernel_regularizer=reg()))
         model.add(BatchNormalization())
         model.add(LeakyReLU(0.2))
-        model.add(UpSampling2D(size=(2, 2)))
 
-    model.add(Conv2D(3, (5, 5), padding='same', kernel_regularizer=reg()))
-    model.add(Activation('sigmoid'))
+    model.add(Conv2DTranspose(3, (5, 5), strides=2, padding='same',
+                              kernel_regularizer=reg()))
+    model.add(Activation('tanh'))
     return model
 
 
@@ -64,12 +64,12 @@ def discriminator(image_size):
     reg = lambda: L1L2(l1=1e-7, l2=1e-7)
     model = Sequential()
     in_size = (image_size, image_size, 3)
-    model.add(GaussianNoise(0.01, input_shape=in_size, name="discriminator"))
+    model.add(GaussianNoise(0.001, input_shape=in_size, name="discriminator"))
     model.add(Conv2D(32, (5, 5), padding='same', kernel_regularizer=reg()))
     model.add(BatchNormalization())
 
     for filt in (64, 128, 256, 1):
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(AveragePooling2D(pool_size=(2, 2)))
         model.add(LeakyReLU(0.2))
         model.add(Conv2D(filt, (5, 5), padding='same',
                          kernel_regularizer=reg()))

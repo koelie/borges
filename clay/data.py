@@ -15,7 +15,7 @@ from scipy.stats import truncnorm
 log = logging.getLogger(__name__)
 
 
-def make_iterator(data_path, image_size, batch_size,
+def make_iterator(data_path, class_name, image_size, batch_size,
                   random_fields=False, num_random=100):
     """Create image iterators
 
@@ -59,6 +59,11 @@ def make_iterator(data_path, image_size, batch_size,
     classes = [fn for fn in os.listdir(data_path)
                if isdir(join(data_path, fn))]
 
+    if class_name != 'all':
+        assert class_name in classes, "Class %s not found" % class_name
+        classes = [class_name]
+
+    # find all the image files
     image_fns = []
     for class_name in classes:
         # find all the image files
@@ -75,15 +80,15 @@ def make_iterator(data_path, image_size, batch_size,
         counts = np.maximum(counts, np.sum(image, axis=-1))
         im_max = np.maximum(im_max, np.max(image))
     im_max /= 255
-    log.info("Image max: %d", im_max)
+    log.info("Image max: %f", im_max)
 
     nnz_h = np.where(np.sum(counts, axis=0) > 0)[0]
     nnz_v = np.where(np.sum(counts, axis=1) > 0)[0]
     crop = [
-        nnz_v[0],       # top
-        nnz_v[-1] + 1,  # bot
-        nnz_h[0],       # left
-        nnz_h[-1] + 1,  # right
+        int(nnz_v[0]),       # top
+        int(nnz_v[-1]) + 1,  # bot
+        int(nnz_h[0]),       # left
+        int(nnz_h[-1]) + 1,  # right
     ]
     log.info("Crop found: %s", str(crop))
 
@@ -125,7 +130,9 @@ def make_iterator(data_path, image_size, batch_size,
     iterator = ImageIterator(image_fns, vary_fields,
                              image_size, crop, im_max, batch_size)
 
-    return iterator, vary_cols, field_mean, field_std, vary_fields, im_max
+    return (
+        iterator, vary_cols, field_mean, field_std, vary_fields, im_max, crop
+    )
 
 
 def sample_trunc_normal(mean, std, minimum, maximum):
@@ -178,7 +185,7 @@ class ImageIterator(Iterator):
 
     def __init__(self, filenames, fields, image_size=(256, 256),
                  crop=None, im_max=1, batch_size=32, shuffle=True,
-                 seed=None, transform=True):
+                 seed=None, transform=False):
         """Initialize image iterator
 
         Parameters
@@ -261,12 +268,13 @@ class ImageIterator(Iterator):
         image : nparray
             prepared image
         """
-        image = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+        image = cv2.imread(filename, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = image.astype(np.float32) / 255.
         # crop image
         image = image[self.crop[0]:self.crop[1], self.crop[2]:self.crop[3]]
-        # normalize [0, 1]
-        image = image[:, :, :-1] / self.im_max
+        # normalize to [-1, 1]
+        image = (image / self.im_max) * 2 - 1
         # determine scale and transform params
         scale = self.image_size / np.min(image.shape[:2])
         if self.transform:
@@ -321,7 +329,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         'class_name', type=str, choices=('vase', 'bowl'),
-        help='which class to learn to generate'
+        help='which class to display'
     )
 
     args = parser.parse_args()
@@ -333,8 +341,8 @@ if __name__ == '__main__':
     )
 
     log.info("Make iterator")
-    train_iter, fidx, fmean, fstd, _, _ = make_iterator(
-        args.data_path, args.image_size, 8
+    train_iter, fidx, fmean, fstd, _, _, _ = make_iterator(
+        args.data_path, args.class_name, args.image_size, 8
     )
     log.info("Number of fields: %d", len(fidx))
     log.info("Field indexes: %s", str(fidx))
@@ -347,7 +355,7 @@ if __name__ == '__main__':
         pl.figure()
         for i in range(8):
             pl.subplot(2, 4, i+1)
-            pl.imshow(imgs[i], cmap=None)
+            pl.imshow((imgs[i]+1)/2, cmap=None)
             pl.axis('off')
         pl.tight_layout()
         pl.show()

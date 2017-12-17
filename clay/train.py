@@ -4,19 +4,20 @@ import argparse
 import sys
 import json
 
+import matplotlib
+matplotlib.use('Agg')
+
 from keras.callbacks import ModelCheckpoint, CSVLogger
 from keras_adversarial.image_grid_callback import ImageGridCallback
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 
 from . import data, models
 
 log = logging.getLogger(__name__)
 
 
-def train(data_path, name, image_size, batch_size=24, num_epochs=100,
-          num_workers=3, resume=False):
+def train(data_path, name, class_name, image_size, batch_size=24,
+          num_epochs=100, num_workers=3, resume=False):
     """Trains model for bowl/vase generation
 
     Will produce .hdf5 model file in current directory for final model.
@@ -40,8 +41,8 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100,
     """
 
     log.info("Create data iterators")
-    x = data.make_iterator(data_path, image_size, batch_size)
-    train_iter, field_idx, field_mean, field_std, fields, im_max = x
+    x = data.make_iterator(data_path, class_name, image_size, batch_size)
+    train_iter, field_idx, field_mean, field_std, fields, im_max, crop = x
     num_fields = len(field_idx)
 
     log.info("Set up model")
@@ -57,7 +58,7 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100,
     def generator_sampler():
         """Predict samples for visualization"""
         xpred = generator.predict(zsamples)
-        return xpred.reshape((7, 7) + xpred.shape[1:]) * im_max
+        return (xpred.reshape((7, 7) + xpred.shape[1:])+1) * im_max/2
 
     matplotlib.rcParams['savefig.dpi'] = 300
     weights_fn = "%s.weights.hdf5" % name
@@ -86,7 +87,8 @@ def train(data_path, name, image_size, batch_size=24, num_epochs=100,
             'field_idx': field_idx.tolist(),
             'field_mean': field_mean.tolist(),
             'field_std': field_std.tolist(),
-            'im_max': im_max
+            'im_max': im_max,
+            'crop': crop
         }
         json.dump(meta, out_file)
 
@@ -127,6 +129,10 @@ if __name__ == '__main__':
         help='name to save the model in (will append .json/.hdf5)',
     )
     parser.add_argument(
+        'class_name', type=str, choices=['bowl', 'vase', 'all'],
+        help='class to train model for',
+    )
+    parser.add_argument(
         '-s', '--image_size', type=int, default=64,
         help='image size used for training/generation',
     )
@@ -159,5 +165,5 @@ if __name__ == '__main__':
         format='[%(asctime)s: %(levelname)s] %(message)s'
     )
 
-    train(args.data_path, args.name, args.image_size, args.batch_size,
-          args.epochs, args.num_workers, args.resume)
+    train(args.data_path, args.name, args.class_name, args.image_size,
+          args.batch_size, args.epochs, args.num_workers, args.resume)

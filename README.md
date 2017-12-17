@@ -72,14 +72,14 @@ The clay package trains a GAN model to generate new vases/bowls, based on the ex
 ## training
 To train a classifier run the following:
 ```
-python -m clay.train <datadir> <name> 
+python -m clay.train <datadir> <name> <class_name>
 ```
 
-where `datadir` is the path to the assignment datadir (with bowl/vase subdirs) and `name` is any name you want for the trained classifier. This will save a file called `name.json` with the model description, `name.hdf5` with the network weights, and  `name.log` with the training log (accuracy in each epoch). It will also save the generator and discriminator model separately as `name.generator.hdf5` and `name.discriminator.hdf5`.
+where `datadir` is the path to the assignment datadir (with bowl/vase subdirs), `name` is any name you want for the trained classifier, and `class_name` is the class you want to generate (`vase`, `bowl`, or `all`). This will save a file called `name.json` with the model description, `name.hdf5` with the network weights, and  `name.log` with the training log (accuracy in each epoch). It will also save the generator and discriminator model separately as `name.generator.hdf5` and `name.discriminator.hdf5`.
 
 The training function has some more options, see them with:
 ```
-python -m pots.train -h
+python -m clay.train -h
 ```
 
 ## predicting
