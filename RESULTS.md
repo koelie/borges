@@ -9,18 +9,18 @@ All images were randomly scaled and rotated during training, to expand the numbe
 I tested the classifier on 2000 previously unseen bowl/vase images generated through the borges api. This gave an accuracy of  94.9%.
 10.2% of vase samples were classified as bowls, while *no* bowl samples were classified as vases.
 
-####Highest scoring correct samples for each class:
+#### Highest scoring correct samples for each class:
 
 | Vase score 99.1%   |  Bowl score 100.0% |
-|:----------------------------------:|:------------------------------------:|
+|:-------------------------:|:-------------------------:|
  ![](images/vase1.png) |  ![](images/bowl1.png) |
 
-####Worst misclassifications:
+#### Worst misclassifications:
 
 The 3 misclassifications (vases classified as bowls)  with the highest confidence are shown below:
 
 | Bowl score 95.9%       |  Bowl score 92.8%      |  Bowl score 90.8%      |
-|:----------------------------------:|:--------------------------------- :|:--------------------------------- :|
+|:----------------------------:|:----------------------------:|:---------------------------:|
 | ![](images/fail1.png)  | ![](images/fail2.png)  | ![](images/fail3.png) |
 
 
@@ -34,26 +34,26 @@ Obviously this problem is much more challenging, and we would need a lot more da
 Also I should note I didn't check all the images from google to see if they made sense.
 Still, it works better than guessing!
 
-####Top correct classifications:
+#### Top correct classifications:
 
 | Vase score 99.5%       |  Vase score 99.4%      |  Vase score 99.3%      |
-|:----------------------------------:|:--------------------------------- :|:--------------------------------- :|
+|:----------------------------:|:---------------------------:|:----------------------------:|
 | ![](images/google_vase_1.jpg)  | ![](images/google_vase_2.jpg)  | ![](images/google_vase_3.jpg) |
 
 | Bowl score 99.6%       |  Bowl score 99.6%      |  Bowl score 99.5%      |
-|:----------------------------------:|:--------------------------------- :|:--------------------------------- :|
+|:----------------------------:|:--------------------------- :|:----------------------------:|
 | ![](images/google_bowl_1.jpg)  | ![](images/google_bowl_2.jpg)  | ![](images/google_bowl_3.jpg) |
 
 
 
-####Top misclassifications:
+#### Top misclassifications:
 
 | Bowl score 99.3%       |  Bowl score 99.0%      |  Bowl score 98.5%      |
-|:----------------------------------:|:--------------------------------- :|:--------------------------------- :|
+|:----------------------------------:|:--------------------------------:|:---------------------------------:|
 | ![](images/fail_google_vase_1.jpg)  | ![](images/fail_google_vase_2.jpg)  | ![](images/fail_google_vase_3.jpg) |
 
 | Vase score 98.9%       |  Vase score 96.4%      |  Vase score 96.1%      |
-|:----------------------------------:|:--------------------------------- :|:--------------------------------- :|
+|:----------------------------------:|:---------------------------------:|:---------------------------------:|
 | ![](images/fail_google_bowl_1.jpg)  | ![](images/fail_google_bowl_2.jpg)  | ![](images/fail_google_bowl_3.jpg) |
 
 The vase classifier seems quite dependent on color; the top results are all grey-bluish, while the failures are a wide variety of colors.
@@ -71,11 +71,11 @@ Even though the generator never actually sees the trainingset images, it learns 
 I trained one generator for the bowl and one for the vase class. For each, I had 3000 training samples (1k from the assessment and 2k generated from the api). 
 The generator generates 64x64 pixel images (any larger is too difficult to train in a short period).
 
-Below you can see random samples from the generator during each step of the training process:
+Below you can see random samples from the bowl and vase generator during each step of the training process:
 
-![](images/bowl_training.gif) "Training the bowl generator"
+![Training the bowl generator](images/bowl_training.gif "Training the bowl generator")
 
-![](images/vase_training.gif) "Training the vase generator"
+![Training the vase generator](images/vase_training.gif "Training the vase generator")
 
 You can clearly see the generator improving as it learns how to produce fake images.
 
@@ -88,9 +88,9 @@ Finally you can interpolate between two existing `.fields` files
 
 Below are some randomly generated bowl and vase samples:
 
-![](images/random_vase_montage.png) "Random vase samples"
+![Random vase samples](images/random_vase_montage.png "Random vase samples")
 
-![](images/random_bowl_montage.png) "Random bowl samples"
+![Random bowl samples](images/random_bowl_montage.png "Random bowl samples")
 
 There's a good variety of vases and bowls on offer. A couple of images are just weird blobs. I suspect the randomly chosen values here were very far from any real `.fields` files, 
 and a result the generator has not been trained on similar inputs and just has to make something up.
@@ -111,4 +111,4 @@ Some details are different, but overall it's pretty close!
 
 Here we interpolate between successive fields files, and show the (mostly) smooth transitions:
 
-![](images/field_interp.gif) "Interpolated walk throuh field space"
+![Interpolated walk throuh field space](images/field_interp.gif "Interpolated walk throuh field space")
