@@ -41,7 +41,7 @@ Still, it works better than guessing!
 | ![](images/google_vase_1.jpg)  | ![](images/google_vase_2.jpg)  | ![](images/google_vase_3.jpg) |
 
 | Bowl score 99.6%       |  Bowl score 99.6%      |  Bowl score 99.5%      |
-|:----------------------------:|:--------------------------- :|:----------------------------:|
+|:----------------------------:|:---------------------------:|:----------------------------:|
 | ![](images/google_bowl_1.jpg)  | ![](images/google_bowl_2.jpg)  | ![](images/google_bowl_3.jpg) |
 
 
@@ -73,9 +73,7 @@ The generator generates 64x64 pixel images (any larger is too difficult to train
 
 Below you can see random samples from the bowl and vase generator during each step of the training process:
 
-![Training the bowl generator](images/bowl_training.gif "Training the bowl generator")
-
-![Training the vase generator](images/vase_training.gif "Training the vase generator")
+![Training the bowl generator](images/bowl_training.gif "Training the bowl generator") ![Training the vase generator](images/vase_training.gif "Training the vase generator")
 
 You can clearly see the generator improving as it learns how to produce fake images.
 
@@ -88,9 +86,7 @@ Finally you can interpolate between two existing `.fields` files
 
 Below are some randomly generated bowl and vase samples:
 
-![Random vase samples](images/random_vase_montage.png "Random vase samples")
-
-![Random bowl samples](images/random_bowl_montage.png "Random bowl samples")
+![Random bowl samples](images/random_bowl_montage.png "Random bowl samples") ![Random vase samples](images/random_vase_montage.png "Random vase samples")
 
 There's a good variety of vases and bowls on offer. A couple of images are just weird blobs. I suspect the randomly chosen values here were very far from any real `.fields` files, 
 and a result the generator has not been trained on similar inputs and just has to make something up.
