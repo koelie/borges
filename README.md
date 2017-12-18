@@ -1,6 +1,7 @@
 # Borges assessment
 
-This contains my submission for the borges machine learning assessment.
+This contains my submission for the borges machine learning assessment. For results analysis and some fun visualizations, see [RESULTS.md](https://github.com/koelie/borges/blob/master/RESULTS.md)
+
 
 ## installation
 
