@@ -28,16 +28,20 @@ The training function has some more options, see them with:
 python -m pots.train -h
 ```
 
+## example model
+
+I've included an example model called `example_model.json`. 
+The model is trained on the 2000 images of the dataset (resized to 128x128 pixels) plus 1272 real-world bowl/vase images I crawled from google images.
+
 ## predicting
 
 To predict new samples with your trained classifier, run the following:
 ```
 python -m pots.predict <model.json> <filenames>
 ```
+This will print the coonfidence the classifier has for each class.
 
-## additional info
-
-### data augmentation
+## data augmentation
 
 All images in the given dataset have the bowls/vases in exactly the same placing. Since vases are higher, I suspect that some higher-up pixels are vastly more likely to be background in bowl images than in vase images. This is not the kind of thing we want our classifier to learn.
 In addition, the dataset is quite small for the purposes of training a neural network.
@@ -48,7 +52,7 @@ To help with both, I added some data augmentation where the images are randomly 
 python -m pots.data <datadir> -t
 ```
 
-### crawler
+## crawler
 
 I expanded the dataset with images of real bowls and vases crawled from google images. This was to see if the classifier could be made generic enough to recognize real-world images. To run it, use:
 
@@ -57,13 +61,6 @@ python -m pots.im_crawler -n <num_to_download> <out_dir> <query>
 ```
 
 If you add crawled images to the png folders in the datadir, they will be added during training.
-
-### example model
-
-I've included an example model called `example_model.json`. For this I crawled 1272 real-world bowl/vase images and added them to the dataset.
-The model is trained on 2454 images of the dataset (resized to 128x128 pixels), and achieves 82% accuracy on the remaining unused 818 images.
-Which I'd say is pretty good given the limited training data, and large variety of the real-world images (I didn't have a chance to check them all, I'm sure there's a significant number of nonsense images in there).
-
 
 # Clay
 
@@ -82,25 +79,35 @@ The training function has some more options, see them with:
 python -m clay.train -h
 ```
 
-## predicting
+## example models
+
+I've added a trained model for bowls `dcgan_bowl.json` and one for vases `dcgan_vase.json`. You can use these to generate images (training a model takes a loooooooong time).
+
+## generating
 
 To generate new random bowl/vases with your trained model, run the following:
 ```
-python -m clay.generate -n <num> <model.json> <out_path>
+python -m clay.generate <model.json> <out_path> -n <num>
 ```
 This will generate `num` samples and save them in `out_path`.
 
-To generate a random bowl/vase based on a particular expression, run the following:
+To generate a random bowl/vase based on one or more particular expressions, run the following:
 ```
-python -m clay.generate  -f <field_file> <model.json> <out_path>
+python -m clay.generate <model.json> <out_path> -f <field_files>
 ```
-This will use an existing `.fields` value as input to generate a vase/bowl. Don't expect it too look too much like the original though!
+This will use existing `.fields` values as input to generate vases/bowls.
 
-To interpolate between two existing expressions, run the following:
+To interpolate between a set of existing expressions, run the following:
 ```
-python -m clay.generate  -f <field_file> -t <field_file> -n <num> <model.json> <out_path>
+python -m clay.generate <model.json> <out_path> -n <num> -f <field_files>
 ```
-This will interpolate between the two `.fields` files in `num` steps, and use the interpolated expressions as input to the model.
+This will interpolate between the successive `.fields` files in `num` steps, and use the interpolated expressions as input to the model.
+It will also interpolate from the last `.fields` back to the first one, so the images can be used in a loop.
+
+The generate function has some more options, see them with:
+```
+python -m clay.generate -h
+```
 
 ## retrieving more data from the api
 

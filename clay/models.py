@@ -29,14 +29,22 @@ def generator(fields_size, image_size):
         generator model
     """
     reg = lambda: L1L2(l1=1e-7, l2=1e-7)
-    size = int(image_size / 2**4)
     model = Sequential()
-    model.add(Dense(512*size**2, input_dim=fields_size,
+    model.add(Dense(512*4*4, input_dim=fields_size,
                     kernel_regularizer=reg(), name="generator"))
     model.add(BatchNormalization())
-    model.add(Reshape((size, size, -1)))
+    model.add(Reshape((4, 4, 512)))
 
-    for filt in (512, 256, 128):
+    if image_size == 32:
+        filters = (512, 256)
+    elif image_size == 64:
+        filters = (512, 256, 128)
+    elif image_size == 128:
+        filters = (512, 256, 128, 64)
+    elif image_size == 256:
+        filters = (512, 256, 128, 64, 32)
+
+    for filt in filters:
         model.add(Conv2DTranspose(filt, (5, 5), strides=2, padding='same',
                                   kernel_regularizer=reg()))
         model.add(BatchNormalization())
@@ -64,7 +72,7 @@ def discriminator(image_size):
     reg = lambda: L1L2(l1=1e-7, l2=1e-7)
     model = Sequential()
     in_size = (image_size, image_size, 3)
-    model.add(GaussianNoise(0.001, input_shape=in_size, name="discriminator"))
+    model.add(GaussianNoise(0.0, input_shape=in_size, name="discriminator"))
     model.add(Conv2D(32, (5, 5), padding='same', kernel_regularizer=reg()))
     model.add(BatchNormalization())
 

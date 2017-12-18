@@ -100,13 +100,16 @@ def make_iterator(data_path, class_name, image_size, batch_size,
 
     else:
         # find the field files and join them in a big matrix
-        fields_fns = []
-        for class_name in classes:
-            fields_path = join(data_path, class_name, 'values')
-            fields_fns.extend(
-                [join(fields_path, fn) for fn in os.listdir(fields_path)
-                 if fn.endswith('.fields')]
-            )
+        fields_fns = [
+            fn.replace('/png/','/values/').replace('.png','.fields')
+            for fn in image_fns
+        ]
+#        for class_name in classes:
+#            fields_path = join(data_path, class_name, 'values')
+#            fields_fns.extend(
+#                [join(fields_path, fn) for fn in os.listdir(fields_path)
+#                 if fn.endswith('.fields')]
+#            )
         fields = np.array([json.load(open(f)) for f in fields_fns])
 
         # determine which field values actually change continuously

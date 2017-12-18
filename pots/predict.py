@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import json
+from collections import Counter, defaultdict
 
 import cv2
 import numpy as np
@@ -95,7 +96,9 @@ if __name__ == '__main__':
         model_desc = json.load(f)
 
     cls = Classifier(model_desc)
-
+    class_count = Counter()
+    class_max = {}
+    
     for i, image_fn in enumerate(args.images):
         tic = time.time()
         confs = cls.predict(image_fn)
@@ -109,3 +112,15 @@ if __name__ == '__main__':
             classes[0], vals[0]*100,
             classes[1], vals[1]*100,
         )
+        
+        pred = 0 if vals[0] > vals[1] else 1
+        pred_class = classes[pred]
+        pred_conf = vals[pred]
+        class_count[pred_class] += 1
+        if pred_class not in class_max or pred_conf > class_max[pred_class][0]:
+            class_max[pred_class] = pred_conf, image_fn
+
+    for cls in classes:
+        log.info("Total predictions for %s: %d", cls, class_count[cls])
+        if cls in class_max:
+            log.info("Max conf for %s: %s (%f)", cls, class_max[cls][1], class_max[cls][0])

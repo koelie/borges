@@ -133,7 +133,7 @@ if __name__ == '__main__':
         help='class to train model for',
     )
     parser.add_argument(
-        '-s', '--image_size', type=int, default=64,
+        '-s', '--image_size', type=int, default=64, choices=[32,64,128,256],
         help='image size used for training/generation',
     )
     parser.add_argument(

@@ -39,7 +39,8 @@ class Generator(object):
         self.field_std = model_description['field_std']
         self.im_max = model_description['im_max']
 
-    def generate_images(self, num, out_path, fields_from=None, fields_to=None):
+    def generate_images(self, num, out_path, prefix, 
+                        fields_files=None, random_params=None):
         """Generate images with the model
 
         Parameters
@@ -48,47 +49,48 @@ class Generator(object):
             number of images to generate
         out_path : str
             folder to place generated images in
-        fields_from : str
-            path to .fields file to use as generator input
-        fields_to : str
-            path to .fields file to use as 2nd generator input.
-            if given, interpolates between fields_from and fields_to.
+        fields_files : str
+            path to .fields files to use as generator inputs
+        random_params : tuple
+            mean and std to use for random sampling
         """
         # first determine the generator inputs
-        if fields_from is None and fields_to is None:
+        if fields_files is None:
             # random numbers
-            fields = np.random.normal(size=(num, self.num_fields))
-        elif fields_to is None:
-            with open(fields_from) as in_file:
-                src_fields = np.array(json.load(in_file))[self.field_idx]
-            fields = (src_fields[None] - self.field_mean)/self.field_std
-            if num != 1:
-                log.warning(
-                    "Only one fields file given, generating only 1 image"
-                )
+            if random_params is None:
+                random_params = 0, 1
+            fields = np.random.normal(
+                size=(num, self.num_fields), 
+                loc=random_params[0], 
+                scale=random_params[1]
+            )
         else:
-            with open(fields_from) as in_file:
-                values = np.array(json.load(in_file))[self.field_idx]
-            from_fields = (values[None] - self.field_mean) / self.field_std
+            sources = []
+            for fields_file in fields_files:
+                with open(fields_file) as in_file:
+                    fld = np.array(json.load(in_file))[self.field_idx]
+                    fld = (fld - self.field_mean)/self.field_std
+                    sources.append(fld)
 
-            with open(fields_to) as in_file:
-                values = np.array(json.load(in_file))[self.field_idx]
-            to_fields = (values[None] - self.field_mean) / self.field_std
-
-            fields = np.zeros((num, self.num_fields), np.float32)
-            for i in range(num):
-                alpha = (i/(num-1))
-                print(alpha)
-                fields[i, :] = (1-alpha) * from_fields + alpha * to_fields
+            if num > 1:
+                # do interpolation loop
+                src_interp = []
+                for ffrom, fto in zip(sources, sources[1:]+sources[:1]):
+                    # interpolate between successive fields file
+                    for i in range(num):
+                        alpha = (i/(num))
+                        interp = (1-alpha) * ffrom + alpha * fto
+                        src_interp.append(interp)
+                sources = src_interp
+            fields = np.array(sources)
 
         fields = fields.astype(np.float32)
-        print(fields)
 
         for i in range(fields.shape[0]):
             log.info("Generating %d/%d", i+1, fields.shape[0])
             image = self.model.predict(fields[i][None])[0]
             image = ((image+1)/2) * self.im_max * 255
-            out_fn = join(out_path, "generated_%d.png" % i)
+            out_fn = join(out_path, "%s_%05d.png" % (prefix, i))
             cv2.imwrite(out_fn, image)
 
 
@@ -105,20 +107,26 @@ if __name__ == '__main__':
         help='folder to place the generated images in',
     )
     parser.add_argument(
+        '-p', '--prefix', type=str, default='generated',
+        help='name prefix for generated images',
+    )
+    parser.add_argument(
         '-d', '--debug', action='store_true',
         help='enable debug logging',
     )
     parser.add_argument(
         '-n', '--num', type=int, default=1,
-        help='number of images to create',
+        help='number of images to create. If fields files are given, this '
+        'instead determines the number of interpolation steps between '
+        'successive inputs',
     )
     parser.add_argument(
-        '-f', '--from_fn', type=str,
-        help='path to .fields file, use expression values for generator',
+        '-f', '--fields_files', type=str, nargs='+',
+        help='path to .fields files, use expression values for generator',
     )
     parser.add_argument(
-        '-t', '--to_fn', type=str,
-        help='path to 2nd .fields file, interpolate between from and to',
+        '-r', '--random_params', type=float, nargs=2,
+        help='mean and stdev for random generation',
     )
 
     args = parser.parse_args()
@@ -134,5 +142,6 @@ if __name__ == '__main__':
         model_desc = json.load(in_file)
 
     gen = Generator(model_desc)
-    gen.generate_images(args.num, args.out_path,
-                        fields_from=args.from_fn, fields_to=args.to_fn)
+    gen.generate_images(args.num, args.out_path, args.prefix,
+                        fields_files=args.fields_files,
+                        random_params=args.random_params)
